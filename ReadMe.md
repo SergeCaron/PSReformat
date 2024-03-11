@@ -6,7 +6,7 @@ The formatting rules are defined in the data file *FormattingRules.psd1* and mus
 
 This is a Windows-oriented script:
 - the input file is presumed coded UTF-8 and the output file is explicitly coded UTF-8 without a Byte Order Marker (BOM). On input, your editor of choice may not automatically change the file encoding to UTF-8 : see this *[UTF-8 Debugging Chart](https://www.i18nqa.com/debug/utf8-debug.html)* for tell-tale signs of corruption.
-- by default, line delimiters are changed to LF. When the script is invoked from the terminal command line, there is a -UseCRLF switch to enable CFLF as th line delimiter. Note that Git may revert LF to CRLF.
+- by default, line delimiters are changed to LF. When the script is invoked from the terminal command line, there is a -UseCRLF switch to enable CFLF as the line delimiter. Note that Git may revert LF to CRLF.
 
 ## Outside VScode
 You may not want to install VSCode just for the purpose of reformatting PowerShell scripts or your VSCode workspace may have implemented a different coding standard than what is expected in this project.
@@ -44,9 +44,24 @@ VSCode implements a *Compare Selected* in the context menu of the Explorer view.
 
 ## GitHub actions
 
-The behavior of this *PSReformat.ps1* script is reprduced in the project Pull request. The following rules will validate all PowerShell scripts checked out from your project:
+The behavior of this *PSReformat.ps1* script is reproduced in the project Pull request. The following rules will validate all PowerShell scripts checked out from your project under the same conditions as outlined in [Outside VSCode](#outside-vscode):
 
 ```
+      - name: Install PSScriptAnalyzer module
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -Force -ErrorAction Stop
+          Write-Output $("Using Powershell version: " + $PSVersionTable.PSVersion.Major.ToString() + "." + $PSVersionTable.PSVersion.Minor.ToString())
+
+      # Verify the rules set
+      - name: Validate FormattingRules
+        shell: pwsh
+        run: |
+          Invoke-ScriptAnalyzer -Path FormattingRules.psd1 -Recurse -Outvariable ProjectIssues
+          $Glitches = $ProjectIssues.Where({$_.Severity -eq 'Error' -or $_.Severity -eq 'Warning'})
+          if ($Glitches.Count) {  Write-Error "There are $($Glitches.Count) errors and warnings in FormattingRules.psd1." -ErrorAction Stop  }
+
       # Validate PowerShell scripts
       - name: Verify PowerShell script formatting
         shell: pwsh
